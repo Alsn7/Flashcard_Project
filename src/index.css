@@ -1,0 +1,156 @@
+@tailwind base;
+  @tailwind components;
+  @tailwind utilities;
+
+  @layer base {
+    :root {
+      --background: 0 0% 100%;
+      --foreground: 222.2 84% 4.9%;
+
+      --card: 0 0% 100%;
+      --card-foreground: 222.2 84% 4.9%;
+
+      --popover: 0 0% 100%;
+      --popover-foreground: 222.2 84% 4.9%;
+
+      --primary: 222.2 47.4% 11.2%;
+      --primary-foreground: 210 40% 98%;
+
+      --secondary: 210 40% 96.1%;
+      --secondary-foreground: 222.2 47.4% 11.2%;
+
+      --muted: 210 40% 96.1%;
+      --muted-foreground: 215.4 16.3% 46.9%;
+
+      --accent: 210 40% 96.1%;
+      --accent-foreground: 222.2 47.4% 11.2%;
+
+      --destructive: 0 84.2% 60.2%;
+      --destructive-foreground: 210 40% 98%;
+
+      --border: 214.3 31.8% 91.4%;
+      --input: 214.3 31.8% 91.4%;
+      --ring: 222.2 84% 4.9%;
+
+      --radius: 0.5rem;
+    }
+
+    .dark {
+      --background: 222.2 84% 4.9%;
+      --foreground: 210 40% 98%;
+
+      --card: 222.2 84% 4.9%;
+      --card-foreground: 210 40% 98%;
+
+      --popover: 222.2 84% 4.9%;
+      --popover-foreground: 210 40% 98%;
+
+      --primary: 210 40% 98%;
+      --primary-foreground: 222.2 47.4% 11.2%;
+
+      --secondary: 217.2 32.6% 17.5%;
+      --secondary-foreground: 210 40% 98%;
+
+      --muted: 217.2 32.6% 17.5%;
+      --muted-foreground: 215 20.2% 65.1%;
+
+      --accent: 217.2 32.6% 17.5%;
+      --accent-foreground: 210 40% 98%;
+
+      --destructive: 0 62.8% 30.6%;
+      --destructive-foreground: 210 40% 98%;
+
+      --border: 217.2 32.6% 17.5%;
+      --input: 217.2 32.6% 17.5%;
+      --ring: 212.7 26.8% 83.9%;
+    }
+  }
+
+  @layer base {
+    * {
+      @apply border-border;
+    }
+    body {
+      @apply bg-background text-foreground;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        'Arial', 'Noto Sans Arabic', 'Noto Kufi Arabic', sans-serif;
+    }
+
+    /* Ensure proper box-sizing for all elements */
+    html {
+      box-sizing: border-box;
+      -webkit-text-size-adjust: 100%;
+      /* Always show scrollbar space to prevent layout shifts when content changes */
+      overflow-y: scroll;
+      scrollbar-gutter: stable;
+    }
+
+    /* Prevent body from shifting when overflow is toggled */
+    body {
+      scrollbar-gutter: stable;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: inherit;
+    }
+
+    /* Prevent horizontal scrolling */
+    html,
+    body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    /* RTL Support for Arabic and other RTL languages */
+    [dir="rtl"] {
+      direction: rtl;
+    }
+
+    [dir="ltr"] {
+      direction: ltr;
+    }
+
+    /* Better Arabic text rendering */
+    [lang="ar"],
+    [lang="ar-SA"],
+    [lang="ar-EG"] {
+      font-family: 'Noto Sans Arabic', 'Noto Kufi Arabic', 'Arial', sans-serif;
+      line-height: 1.8;
+    }
+  }
+
+  @layer utilities {
+    /* Responsive text utilities */
+    .text-responsive-xs {
+      @apply text-xs sm:text-sm;
+    }
+    .text-responsive-sm {
+      @apply text-sm sm:text-base;
+    }
+    .text-responsive-base {
+      @apply text-base sm:text-lg;
+    }
+    .text-responsive-lg {
+      @apply text-lg sm:text-xl md:text-2xl;
+    }
+    .text-responsive-xl {
+      @apply text-xl sm:text-2xl md:text-3xl;
+    }
+    .text-responsive-2xl {
+      @apply text-2xl sm:text-3xl md:text-4xl;
+    }
+
+    /* Responsive padding utilities */
+    .p-responsive {
+      @apply p-4 sm:p-6 md:p-8;
+    }
+    .px-responsive {
+      @apply px-4 sm:px-6 lg:px-8;
+    }
+    .py-responsive {
+      @apply py-8 sm:py-12 md:py-16;
+    }
+  }
