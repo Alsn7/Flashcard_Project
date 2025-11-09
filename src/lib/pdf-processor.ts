@@ -1,57 +1,73 @@
 // Alternative PDF processing utilities for deployment environments
 
 export async function extractTextFromPDF(uint8Array: Uint8Array): Promise<string> {
+  console.log('🔄 Starting PDF text extraction...');
   let pdfjsLib: any;
   
   try {
     // Try loading PDF.js with different approaches
     try {
+      console.log('📚 Attempting to load legacy PDF.js build...');
       pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
-      console.log('Using legacy PDF.js build');
+      console.log('✅ Using legacy PDF.js build');
     } catch (legacyError) {
-      console.log('Legacy build failed, trying standard build');
-      pdfjsLib = require('pdfjs-dist');
-      console.log('Using standard PDF.js build');
-    }
-
-    // Configure for Node.js environment
-    if (typeof window === 'undefined') {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = null;
-      pdfjsLib.GlobalWorkerOptions.workerPort = null;
-      
-      // Additional Node.js specific settings
-      if (pdfjsLib.GlobalWorkerOptions) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = false;
+      console.log('⚠️ Legacy build failed, trying standard build...');
+      console.log('Legacy error:', legacyError.message);
+      try {
+        pdfjsLib = require('pdfjs-dist');
+        console.log('✅ Using standard PDF.js build');
+      } catch (standardError) {
+        console.error('❌ Both PDF.js builds failed:', standardError.message);
+        throw new Error(`PDF.js library could not be loaded: ${standardError.message}`);
       }
     }
 
-    console.log('Loading PDF document...');
+    // Configure for Node.js environment
+    console.log('⚙️ Configuring PDF.js for Node.js environment...');
+    if (typeof window === 'undefined') {
+      // Ensure we're in Node.js environment
+      try {
+        if (pdfjsLib.GlobalWorkerOptions) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = null;
+          pdfjsLib.GlobalWorkerOptions.workerPort = null;
+          console.log('✅ PDF.js worker disabled for Node.js');
+        }
+      } catch (configError) {
+        console.warn('⚠️ Could not configure PDF.js worker options:', configError.message);
+      }
+    }
+
+    console.log('📄 Loading PDF document...');
+    console.log('📊 PDF size:', uint8Array.length, 'bytes');
+    
     const loadingTask = pdfjsLib.getDocument({
       data: uint8Array,
       useWorkerFetch: false,
       isEvalSupported: false,
       useSystemFonts: true,
-      verbosity: 0,
-      maxImageSize: 1024 * 1024,
-      disableFontFace: true,
-      disableRange: true,
-      disableStream: true,
+      verbosity: 0, // Reduce logging
+      maxImageSize: 1024 * 1024, // 1MB max image size
+      disableFontFace: true, // Disable font loading for server
+      disableRange: true, // Disable range requests
+      disableStream: true, // Disable streaming
       // Additional compatibility options
       standardFontDataUrl: null,
       ignoreErrors: true,
+      worker: null,
     });
 
+    console.log('⏳ Waiting for PDF to load (30s timeout)...');
     const pdfDoc = await Promise.race([
       loadingTask.promise,
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('PDF loading timeout')), 30000)
+        setTimeout(() => reject(new Error('PDF loading timeout after 30 seconds')), 30000)
       )
     ]);
 
-    console.log('PDF loaded successfully, pages:', (pdfDoc as any).numPages);
+    const numPages = (pdfDoc as any).numPages;
+    console.log('✅ PDF loaded successfully, pages:', numPages);
 
     let text = '';
-    const numPages = (pdfDoc as any).numPages;
 
     // Limit pages to prevent memory issues
     const maxPages = Math.min(numPages, 50);
@@ -89,10 +105,21 @@ export async function extractTextFromPDF(uint8Array: Uint8Array): Promise<string
     return text;
 
   } catch (error) {
-    console.error('PDF.js extraction failed:', error);
+    console.error('❌ PDF.js extraction failed:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack');
     
-    // Fallback: Return a message indicating the PDF couldn't be processed
-    throw new Error(`PDF text extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Provide more specific error information
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    if (errorMessage.includes('PDF.js library could not be loaded')) {
+      throw new Error('PDF processing is not available on this server. The PDF.js library could not be loaded.');
+    } else if (errorMessage.includes('timeout')) {
+      throw new Error('PDF processing timed out. The PDF file may be too large or complex.');
+    } else if (errorMessage.includes('Invalid PDF')) {
+      throw new Error('The uploaded file is not a valid PDF document.');
+    } else {
+      throw new Error(`PDF text extraction failed: ${errorMessage}`);
+    }
   }
 }
 

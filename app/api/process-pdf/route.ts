@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateFlashcardsFromPDF } from "@/lib/openai";
-import { extractTextFromPDF, validatePDFData, getPDFInfo } from "../../../lib/pdf-processor";
+import { extractTextFromPDF, validatePDFData, getPDFInfo } from "@/lib/pdf-processor";
 
 // Force Node.js runtime for file processing
 export const runtime = 'nodejs';
@@ -74,7 +74,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract text using the robust PDF processor
-    const text = await extractTextFromPDF(uint8Array);
+    console.log('🔄 Starting PDF text extraction...');
+    let text: string;
+    
+    try {
+      text = await extractTextFromPDF(uint8Array);
+      console.log('✅ PDF text extraction completed, text length:', text.length);
+    } catch (pdfError) {
+      console.error('❌ PDF text extraction failed:', pdfError);
+      
+      // Return a more specific error based on the PDF processing failure
+      const errorMessage = pdfError instanceof Error ? pdfError.message : 'Unknown PDF processing error';
+      
+      return NextResponse.json(
+        {
+          error: "PDF Processing Failed",
+          message: errorMessage,
+          details: {
+            fileName,
+            pdfSize: uint8Array.length,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 500 }
+      );
+    }
 
     if (!text || text.trim().length === 0) {
       console.error('ERROR: No text extracted from PDF');
