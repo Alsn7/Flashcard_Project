@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateFlashcardsFromPDF } from "@/lib/openai";
+import { extractTextFromPDF, validatePDFData, getPDFInfo } from "../../../lib/pdf-processor";
 
 // Force Node.js runtime for file processing
 export const runtime = 'nodejs';
@@ -8,18 +9,16 @@ export const dynamic = 'force-dynamic';
 // Set max duration for PDF processing (important for larger files)
 export const maxDuration = 60;
 
-// Import pdfjs for Node.js environment
-// Using legacy build for better Node.js compatibility
-const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
-
-// Configure PDF.js to disable worker in Node.js environment
-// Workers aren't needed for server-side text extraction
-if (typeof window === 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = null;
-}
+// PDF processing is now handled by the pdf-processor utility
 
 export async function POST(request: NextRequest) {
   console.log('=== PDF Processing Request Started ===');
+  
+  // Add timeout wrapper for the entire process
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('PDF processing timeout')), 50000) // 50 seconds
+  );
+
   try {
     const body = await request.json();
     const { fileData, fileName, count: countParam, preferences, flashcardType, language, visibility } = body;
@@ -32,6 +31,15 @@ export async function POST(request: NextRequest) {
       console.error('ERROR: No file data provided');
       return NextResponse.json(
         { error: "No file data provided" },
+        { status: 400 }
+      );
+    }
+
+    // Validate PDF data format
+    if (!validatePDFData(fileData)) {
+      console.error('ERROR: Invalid PDF data format');
+      return NextResponse.json(
+        { error: "Invalid PDF file format" },
         { status: 400 }
       );
     }
@@ -53,32 +61,20 @@ export async function POST(request: NextRequest) {
     const uint8Array = new Uint8Array(buffer);
     console.log('PDF buffer size:', uint8Array.length, 'bytes');
 
-    // Extract text from PDF using pdfjs
-    // Disable worker for Node.js environment
-    console.log('Loading PDF document...');
-    const loadingTask = pdfjsLib.getDocument({
-      data: uint8Array,
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
-    });
-    const pdfDoc = await loadingTask.promise;
-    console.log('PDF loaded successfully, pages:', pdfDoc.numPages);
+    // Get PDF info first (lightweight operation)
+    const pdfInfo = await getPDFInfo(uint8Array);
+    console.log('PDF info:', pdfInfo);
 
-    let text = '';
-    const numPages = pdfDoc.numPages;
-
-    // Extract text from each page
-    console.log('Extracting text from', numPages, 'pages...');
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdfDoc.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      text += pageText + '\n';
+    if (pdfInfo.pages === 0) {
+      console.error('ERROR: Could not read PDF structure');
+      return NextResponse.json(
+        { error: "Could not read PDF file" },
+        { status: 400 }
+      );
     }
-    console.log('Text extraction complete. Total length:', text.length, 'characters');
+
+    // Extract text using the robust PDF processor
+    const text = await extractTextFromPDF(uint8Array);
 
     if (!text || text.trim().length === 0) {
       console.error('ERROR: No text extracted from PDF');
@@ -104,7 +100,7 @@ export async function POST(request: NextRequest) {
       flashcards,
       count: flashcards.length,
       pdfInfo: {
-        pages: numPages,
+        pages: pdfInfo.pages,
         textLength: text.length,
       },
     });

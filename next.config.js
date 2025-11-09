@@ -37,16 +37,41 @@ const nextConfig = {
     '@radix-ui/react-toggle',
     '@radix-ui/react-tooltip',
   ],
-  // Webpack config for handling canvas
+  // Webpack config for handling canvas and PDF.js
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = config.externals || [];
       config.externals.push('canvas');
+      
+      // Handle PDF.js for server-side rendering
+      config.resolve = config.resolve || {};
+      config.resolve.fallback = config.resolve.fallback || {};
+      config.resolve.fallback.canvas = false;
+      config.resolve.fallback.fs = false;
+      config.resolve.fallback.stream = false;
+      config.resolve.fallback.util = false;
+    } else {
+      // Client-side configuration
+      config.resolve = config.resolve || {};
+      config.resolve.fallback = config.resolve.fallback || {};
+      config.resolve.fallback.canvas = false;
+      config.resolve.fallback.fs = false;
     }
-    // Also ignore canvas for client-side builds to prevent bundling issues
-    config.resolve = config.resolve || {};
+    
+    // PDF.js specific configurations
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias.canvas = false;
+    
+    // Handle PDF.js worker
+    config.module = config.module || {};
+    config.module.rules = config.module.rules || [];
+    config.module.rules.push({
+      test: /pdf\.worker\.(min\.)?js/,
+      type: 'asset/resource',
+      generator: {
+        filename: 'static/worker/[hash][ext][query]'
+      }
+    });
     
     return config;
   },
